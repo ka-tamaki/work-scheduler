@@ -34,15 +34,12 @@ def generate_schedule(title, start_year, start_month, end_year, end_month):
         ws = wb.active  # アクティブなシートを選択
         
         # 作成日を入力
-        current_date_str = datetime.now().strftime('%Y/%m/%d')
-        ws['A1'].value = f"作成日: {current_date_str}"
-        ws['A1'].alignment = Alignment(horizontal='left', vertical='center')
-        ws['A1'].font = Font(size=12)
+        now = datetime.now()
+        current_date_str = now.strftime('%Y/%m/%d')
+        ws['AE1'].value = current_date_str
         
         # タイトルを入力
-        ws['A2'].value = f"{title} 製造工程計画"
-        ws['A2'].alignment = Alignment(horizontal='left', vertical='center')
-        ws['A2'].font = Font(bold=True, size=14)
+        ws['A3'].value = f"{title} 製造工程計画"
         
         # テーブルの開始位置
         first_table_start_row = 8
@@ -61,8 +58,6 @@ def generate_schedule(title, start_year, start_month, end_year, end_month):
             
             # 月をD行に入力
             ws.cell(row=current_row, column=4, value=reiwa_month)
-            ws.cell(row=current_row, column=4).alignment = Alignment(horizontal='center', vertical='center')
-            ws.cell(row=current_row, column=4).font = Font(bold=True, size=12)
             
             # 月の日数を取得
             last_day = calendar.monthrange(year, month)[1]
@@ -71,8 +66,6 @@ def generate_schedule(title, start_year, start_month, end_year, end_month):
             for day in range(1, last_day + 1):
                 col = 4 + day - 1  # D列は4
                 ws.cell(row=current_row + 1, column=col, value=day)
-                ws.cell(row=current_row + 1, column=col).alignment = Alignment(horizontal='center', vertical='center')
-                ws.cell(row=current_row + 1, column=col).font = Font(bold=True)
             
             # 曜日をD行+2に入力
             for day in range(1, last_day + 1):
@@ -90,16 +83,6 @@ def generate_schedule(title, start_year, start_month, end_year, end_month):
                 }.get(weekday_en, '')
                 col = 4 + day - 1
                 ws.cell(row=current_row + 2, column=col, value=weekday_jp)
-                ws.cell(row=current_row + 2, column=col).alignment = Alignment(horizontal='center', vertical='center')
-                ws.cell(row=current_row + 2, column=col).font = Font(bold=True)
-            
-            # フォントや色の設定（必要に応じて）
-            # 例えば、ヘッダー行に背景色を設定する場合
-            header_fill = PatternFill(start_color='FFD700', end_color='FFD700', fill_type='solid')  # ゴールド
-            for col in range(4, 4 + last_day):
-                ws.cell(row=current_row, column=col).fill = header_fill
-                ws.cell(row=current_row + 1, column=col).fill = header_fill
-                ws.cell(row=current_row + 2, column=col).fill = header_fill
             
             # 空白行19,20は自動で空白のまま
             
@@ -113,13 +96,9 @@ def generate_schedule(title, start_year, start_month, end_year, end_month):
             else:
                 month += 1
         
-        # 列幅の調整（必要に応じて）
-        for col in range(4, 4 + 31):  # D列からAH列まで
-            column_letter = get_column_letter(col)
-            ws.column_dimensions[column_letter].width = 3  # 幅を3に設定（必要に応じて調整）
-        
         # 保存ファイル名の作成
-        save_filename = f"{title}_製造工程計画_{start_year}_{start_month:02}_{end_year}_{end_month:02}.xlsx"
+        formatted_date = now.strftime("%Y-%m-%d_%H-%M-%S")
+        save_filename = f"{title}製造工程表_{formatted_date}.xlsx"
         save_path = os.path.join(config.SAVE_DIR, save_filename)
         wb.save(save_path)
         
