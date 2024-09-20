@@ -29,6 +29,7 @@ def is_holiday(year, month, day):
 
 def generate_schedule(title, start_year, start_month, end_year, end_month):
     try:
+        
         template_path = config.TEMPLATE_PATH
         if not os.path.exists(template_path):
             messagebox.showerror("エラー", f"テンプレートファイル '{template_path}' が見つかりません。")

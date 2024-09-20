@@ -42,6 +42,15 @@ class FactorySettingsWindow(tk.Toplevel):
             cal.bind("<<CalendarSelected>>", self.toggle_holiday)
             self.calendars[month] = cal
         
+        # 休日イベントのスタイル設定
+        for cal in self.calendars.values():
+            cal.calevent_create(datetime.now(), 'holiday', tags='holiday')  # 初期イベントを作成
+            cal.tag_config('holiday', background='red', foreground='white')
+            cal.calevent_remove('all')  # 初期イベントを削除
+        
+        # 休日情報をカレンダーに適用
+        self.load_holidays()
+        
         # 保存ボタン
         self.save_btn = tk.Button(self, text="保存", command=self.save_holidays, font=("Arial", 14))
         self.save_btn.pack(pady=20)
@@ -61,20 +70,21 @@ class FactorySettingsWindow(tk.Toplevel):
     
     def load_holidays(self, event=None):
         """指定された年の休日をカレンダーに反映"""
-        selected_year = int(self.year_var.get())
+        selected_year = self.year_var.get()
         for month, cal in self.calendars.items():
-            # 既存の休日をクリア
+            # 既存の休日イベントを全て削除
             cal.calevent_remove('all')
             
-            holidays = config.HOLIDAYS.get(str(selected_year), {}).get(str(month), [])
+            # 休日を取得
+            holidays = config.HOLIDAYS.get(selected_year, {}).get(str(month), [])
             for day in holidays:
                 try:
-                    date = datetime(selected_year, month, day)
-                    cal.calevent_create(date, '休日', 'holiday')
-                except:
-                    pass
-            # カレンダーの色設定
-            cal.tag_config('holiday', background='red', foreground='white')
+                    # 日付を datetime オブジェクトに変換
+                    date_obj = datetime.strptime(f"{selected_year}/{month}/{day}", "%Y/%m/%d")
+                    # 'holiday' タグを持つイベントを作成
+                    cal.calevent_create(date_obj, 'Holiday', tags='holiday')
+                except Exception as e:
+                    print(f"Error adding holiday for {month}/{day}/{selected_year}: {e}")
     
     def toggle_holiday(self, event):
         """カレンダーの日付をクリックすると休日を追加・解除し、色を変更"""
@@ -97,14 +107,17 @@ class FactorySettingsWindow(tk.Toplevel):
         if day in config.HOLIDAYS[year_str][month_str]:
             # 休日から削除
             config.HOLIDAYS[year_str][month_str].remove(day)
-            cal.calevent_remove('holiday', selected_date)
+            # 日付を datetime オブジェクトに変換
+            date_obj = datetime.strptime(f"{year}/{month}/{day}", "%Y/%m/%d")
+            # 'holiday' タグを持つイベントを削除
+            cal.calevent_remove(date_obj, 'holiday')
         else:
             # 休日に追加
             config.HOLIDAYS[year_str][month_str].append(day)
-            cal.calevent_create(selected_date, '休日', 'holiday')
-        
-        # カレンダーの色設定
-        cal.tag_config('holiday', background='red', foreground='white')
+            # 日付を datetime オブジェクトに変換
+            date_obj = datetime.strptime(f"{year}/{month}/{day}", "%Y/%m/%d")
+            # 'holiday' タグを持つイベントを作成
+            cal.calevent_create(date_obj, 'Holiday', tags='holiday')
     
     def save_holidays(self):
         """休日情報を保存"""
