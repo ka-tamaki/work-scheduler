@@ -19,6 +19,12 @@ def gregorian_to_reiwa(year, month):
     reiwa_year = year - 2018
     return f"令和{reiwa_year}年{month}月"
 
+def is_holiday(year, month, day):
+    """
+    指定された年、月、日が休日かどうかを判定します。
+    """
+    return day in config.HOLIDAYS.get(year, {}).get(month, [])
+
 def generate_schedule(title, start_year, start_month, end_year, end_month):
     try:
         template_path = config.TEMPLATE_PATH
@@ -83,6 +89,17 @@ def generate_schedule(title, start_year, start_month, end_year, end_month):
                 }.get(weekday_en, '')
                 col = 4 + day - 1
                 ws.cell(row=current_row + 2, column=col, value=weekday_jp)
+            
+            # 記入欄 (11行目～18行目) は空白のまま
+            
+            # 休日のセルに色を付ける
+            for day in range(1, last_day + 1):
+                if is_holiday(year, month, day):
+                    col = 4 + day - 1
+                    for row_offset in range(0, 13):
+                        cell_row = current_row + 3 + row_offset  # 11行目～23行目
+                        cell = ws.cell(row=cell_row, column=col)
+                        cell.font = Font(color='FF0000')  # フォント色を赤に設定
             
             # 空白行19,20は自動で空白のまま
             
