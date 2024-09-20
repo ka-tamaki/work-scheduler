@@ -1,9 +1,17 @@
 # main.py
 
-from gui import create_gui
+import tkinter as tk
+from ui.main_ui import MainUI
+from utils.holidays_initializer import initialize_holidays
 
 def main():
-    root = create_gui()
+    # holidays.jsonを初期化または更新
+    initialize_holidays()
+
+    # Tkinterアプリケーションを開始
+    root = tk.Tk()
+    root.geometry("500x400")  # 必要に応じてサイズを調整
+    app = MainUI(root)
     root.mainloop()
 
 if __name__ == "__main__":

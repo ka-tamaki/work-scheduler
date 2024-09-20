@@ -1,11 +1,12 @@
 # config.py
 
-TEMPLATE_PATH = 'template.xlsx'
-SAVE_DIR = 'C:\myPrograms\output'
+import os
 
-# 休日情報を格納する辞書
-# 例: {2024: {1: [1, 15], 2: [14], ...}, 2025: {1: [1, 15], ...}, ...}
-HOLIDAYS = {}
+# 休日情報のファイルパス
+HOLIDAYS_FILE = os.path.join(os.path.dirname(__file__), 'holidays.json')
 
-# 休日情報を保存するファイルパス
-HOLIDAYS_FILE = 'C:\\myPrograms\\01_作業中\\work_scheduler\\holidays.json'
+# Excelテンプレートファイルのパス
+EXCEL_TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), 'templates', 'template.xlsx')
+
+# Excel出力ディレクトリのパス
+EXCEL_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), 'output')
