@@ -23,7 +23,9 @@ def is_holiday(year, month, day):
     """
     指定された年、月、日が休日かどうかを判定します。
     """
-    return day in config.HOLIDAYS.get(year, {}).get(month, [])
+    year_str = str(year)
+    month_str = str(month)
+    return day in config.HOLIDAYS.get(year_str, {}).get(month_str, [])
 
 def generate_schedule(title, start_year, start_month, end_year, end_month):
     try:
@@ -96,10 +98,10 @@ def generate_schedule(title, start_year, start_month, end_year, end_month):
             for day in range(1, last_day + 1):
                 if is_holiday(year, month, day):
                     col = 4 + day - 1
-                    for row_offset in range(0, 13):
-                        cell_row = current_row + 3 + row_offset  # 11行目～23行目
+                    for row_offset in [1, 2]:  # 1: 日にち, 2: 曜日
+                        cell_row = current_row + row_offset
                         cell = ws.cell(row=cell_row, column=col)
-                        cell.font = Font(color='FF0000')  # フォント色を赤に設定
+                        cell.font = Font(name='游ゴシック', size=14, bold=True, color='FF0000')  # フォント設定
             
             # 空白行19,20は自動で空白のまま
             
