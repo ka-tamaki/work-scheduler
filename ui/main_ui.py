@@ -12,7 +12,7 @@ class MainUI(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        self.parent.title("メイン画面 - スケジュール生成")
+        self.parent.title("工程表生成")
         self.pack(fill=tk.BOTH, expand=True)
 
         # メニューバーの作成
@@ -23,6 +23,15 @@ class MainUI(tk.Frame):
         factory_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="メニュー", menu=factory_menu)
         factory_menu.add_command(label="工場設定", command=self.open_factory_settings)
+
+        # タイトル入力欄
+        title_frame = tk.Frame(self)
+        title_frame.pack(pady=10)
+
+        tk.Label(title_frame, text="工事名:").pack(side=tk.LEFT, padx=5)
+        self.title_var = tk.StringVar()
+        self.title_entry = tk.Entry(title_frame, textvariable=self.title_var, width=30)
+        self.title_entry.pack(side=tk.LEFT)
 
         # 開始年月と終了年月の選択
         selection_frame = tk.Frame(self)
@@ -54,8 +63,8 @@ class MainUI(tk.Frame):
         self.end_month_cb = ttk.Combobox(end_frame, textvariable=self.end_month_var, values=list(range(1, 13)), width=3, state='readonly')
         self.end_month_cb.pack(side=tk.LEFT)
 
-        # スケジュール生成ボタン
-        generate_button = tk.Button(self, text="スケジュール生成", command=self.generate_schedule)
+        # 工程表生成ボタン
+        generate_button = tk.Button(self, text="工程表生成", command=self.generate_schedule)
         generate_button.pack(pady=20)
 
         # Excel生成用の保存先ディレクトリ（設定ファイルから取得）
@@ -66,8 +75,12 @@ class MainUI(tk.Frame):
         CalendarUI(self)
 
     def generate_schedule(self):
-        """スケジュールを生成してExcelファイルを保存"""
-        title = "製造工程"  # タイトルは必要に応じて変更
+        """工程表を生成してExcelファイルを保存"""
+        title = self.title_var.get().strip()
+        if not title:
+            messagebox.showerror("エラー", "タイトルを入力してください。")
+            return
+
         start_year = self.start_year_var.get()
         start_month = self.start_month_var.get()
         end_year = self.end_year_var.get()
