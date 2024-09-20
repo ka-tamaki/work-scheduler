@@ -11,8 +11,8 @@ import jpholiday
 class CalendarUI(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
-        self.title("工場設定 - 休日設定")
-        self.geometry("1200x800")  # サイズを拡大して12か月分表示
+        self.title("休日設定")
+        self.geometry("1050x700")
         self.parent = parent
 
         # 休日マネージャーの初期化
@@ -36,6 +36,11 @@ class CalendarUI(tk.Toplevel):
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+        self.scrollable_frame.bind_all("<MouseWheel>", _on_mousewheel)
+
         # 年の選択コンボボックス
         control_frame = tk.Frame(self.scrollable_frame)
         control_frame.pack(pady=10)
@@ -47,71 +52,89 @@ class CalendarUI(tk.Toplevel):
         self.year_cb = ttk.Combobox(control_frame, textvariable=self.year_var, values=years, width=5, state='readonly')
         self.year_cb.pack(side=tk.LEFT)
         self.year_cb.bind("<<ComboboxSelected>>", self.update_calendar)
-        
+
         # カレンダーフレーム
         self.calendar_frame = tk.Frame(self.scrollable_frame)
-        self.calendar_frame.pack()
+        self.calendar_frame.pack(pady=10, padx=10)
+
+        # ボタンを保持する辞書 {(year, month, day): button}
+        self.button_refs = {}
 
         # カレンダーの初期表示
         self.generate_calendar()
 
     def generate_calendar(self):
-        """指定された年の12か月分のカレンダーを生成"""
+        """指定された年の12か月分のカレンダーを4x3のグリッドで生成"""
         # 既存のカレンダーをクリア
         for widget in self.calendar_frame.winfo_children():
             widget.destroy()
+        self.button_refs.clear()
 
         year = self.year_var.get()
 
-        for month in range(1, 13):
-            month_frame = tk.Frame(self.calendar_frame, borderwidth=1, relief='solid', padx=5, pady=5)
-            month_frame.pack(pady=10, padx=10, fill='x')
+        # グリッドの設定
+        columns = 4
+        rows = 3
+        for idx, month in enumerate(range(1, 13)):
+            row = idx // columns
+            col = idx % columns
+
+            month_frame = tk.Frame(self.calendar_frame, borderwidth=1, relief='solid', width=250, height=300)
+            month_frame.grid(row=row, column=col, sticky='nsew')
+            month_frame.pack_propagate(False)  # サイズを固定
 
             # 月のタイトルを表示
-            month_title = f"{year}年{month}月"
-            tk.Label(month_frame, text=month_title, font=("Arial", 14, "bold")).pack(pady=5)
+            month_title = f"{month}月"
+            title_label = tk.Label(month_frame, text=month_title, font=("Arial", 14, "bold"), bg='lightblue')
+            title_label.pack(fill='x')
 
             # 曜日ヘッダー
             days_frame = tk.Frame(month_frame)
-            days_frame.pack()
+            days_frame.pack(fill='x')
             for day in ['月', '火', '水', '木', '金', '土', '日']:
-                tk.Label(days_frame, text=day, width=4, borderwidth=1, relief='solid', bg='white').pack(side=tk.LEFT)
+                day_label = tk.Label(days_frame, text=day, width=4, borderwidth=1, relief='solid', bg='lightgray', font=("Arial", 10, "bold"))
+                day_label.pack(side=tk.LEFT, fill='both', expand=True)
 
             # カレンダーの日付部分
             dates_frame = tk.Frame(month_frame)
-            dates_frame.pack()
+            dates_frame.pack(fill='both', expand=True)
 
             cal = calendar.Calendar(firstweekday=0)  # 月曜日=0
             month_days = cal.monthdayscalendar(year, month)
 
             for week in month_days:
                 week_frame = tk.Frame(dates_frame)
-                week_frame.pack()
+                week_frame.pack(fill='both', expand=True)
+                week_frame.grid_columnconfigure(tuple(range(7)), weight=1)  # 各列に重みを付ける
 
-                for day in week:
+                for day_idx, day in enumerate(week):
                     if day == 0:
-                        # 月に属さない日
-                        tk.Label(week_frame, text='', width=4, height=2, borderwidth=1, relief='solid').pack(side=tk.LEFT)
+                        # 月に属さない日も同じUIにする
+                        label = tk.Label(week_frame, text=' ', width=4, height=2, borderwidth=1, relief='solid', bg='white', font=("Arial", 10))
+                        label.grid(row=0, column=day_idx, sticky='nsew')
                     else:
                         is_holiday = self.manager.is_holiday(year, month, day)
-                        is_japanese_holiday = self.is_japanese_holiday(year, month, day)
                         if is_holiday:
-                            bg_color = 'red'  # 休日・祝日は赤色
-                            holiday_type = "休日"
+                            bg_color = 'lightcoral'  # 休日・祝日は赤色系
                         else:
                             bg_color = 'white'
-                            holiday_type = "平日"
 
                         btn = tk.Button(week_frame, text=str(day), width=4, height=2,
                                         bg=bg_color,
                                         relief='solid',
                                         bd=1,
+                                        font=("Arial", 10),
                                         command=lambda y=year, m=month, d=day: self.toggle_holiday(y, m, d))
-                        btn.pack(side=tk.LEFT, padx=1, pady=1)
+                        btn.grid(row=0, column=day_idx, sticky='nsew')
 
-                        # ツールチップの追加
-                        tooltip_text = f"{year}/{month}/{day}\n{holiday_type}"
-                        CreateToolTip(btn, tooltip_text)
+                        # ボタン参照を保持
+                        self.button_refs[(year, month, day)] = btn
+
+        # カレンダーフレームの列と行に重みを付ける
+        for col in range(columns):
+            self.calendar_frame.grid_columnconfigure(col, weight=1)
+        for row in range(rows):
+            self.calendar_frame.grid_rowconfigure(row, weight=1)
 
     def is_japanese_holiday(self, year, month, day):
         """指定された日が日本の祝日かどうかを判定"""
@@ -131,14 +154,20 @@ class CalendarUI(tk.Toplevel):
         if day in self.manager.holidays[year_str][month_str]:
             # 休日から削除
             self.manager.remove_holiday(year, month, day)
-            messagebox.showinfo("休日解除", f"{year}/{month}/{day} の休日を解除しました。")
+            new_bg = 'white'
+            holiday_type = "平日"
         else:
             # 休日に追加
             self.manager.add_holiday(year, month, day)
-            messagebox.showinfo("休日追加", f"{year}/{month}/{day} を休日に追加しました。")
+            new_bg = 'lightcoral'
+            holiday_type = "休日"
 
-        # カレンダーを再生成
-        self.generate_calendar()
+        # ボタンの背景色を更新
+        btn = self.button_refs.get((year, month, day))
+        if btn:
+            btn.configure(bg=new_bg)
+            # ツールチップを更新
+            CreateToolTip(btn, f"{year}/{month}/{day}\n{holiday_type}")
 
     def update_calendar(self, event=None):
         """年が変更されたときにカレンダーを更新する"""

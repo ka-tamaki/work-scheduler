@@ -10,7 +10,7 @@ def main():
 
     # Tkinterアプリケーションを開始
     root = tk.Tk()
-    root.geometry("500x400")  # 必要に応じてサイズを調整
+    root.geometry("500x400")
     app = MainUI(root)
     root.mainloop()
 
