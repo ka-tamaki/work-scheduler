@@ -12,7 +12,7 @@ class CalendarUI(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.title("休日設定")
-        self.geometry("1050x700")
+        self.geometry("1050x600")
         self.parent = parent
 
         # 休日マネージャーの初期化
@@ -79,7 +79,7 @@ class CalendarUI(tk.Toplevel):
             row = idx // columns
             col = idx % columns
 
-            month_frame = tk.Frame(self.calendar_frame, borderwidth=1, relief='solid', width=250, height=300)
+            month_frame = tk.Frame(self.calendar_frame, borderwidth=1, relief='solid', width=250, height=320)
             month_frame.grid(row=row, column=col, sticky='nsew')
             month_frame.pack_propagate(False)  # サイズを固定
 
@@ -91,16 +91,23 @@ class CalendarUI(tk.Toplevel):
             # 曜日ヘッダー
             days_frame = tk.Frame(month_frame)
             days_frame.pack(fill='x')
-            for day in ['月', '火', '水', '木', '金', '土', '日']:
-                day_label = tk.Label(days_frame, text=day, width=4, borderwidth=1, relief='solid', bg='lightgray', font=("Arial", 10, "bold"))
-                day_label.pack(side=tk.LEFT, fill='both', expand=True)
+            days_frame.grid_columnconfigure(tuple(range(7)), weight=1)
+            self.days_num = 0
+            for day in ['日', '月', '火', '水', '木', '金', '土']:
+                btn = DButton(days_frame, text=day, state='disabled', bg='lightgray', height=1)
+                btn.grid(row=0, column=self.days_num, sticky='nsew')
+                self.days_num += 1
 
             # カレンダーの日付部分
             dates_frame = tk.Frame(month_frame)
             dates_frame.pack(fill='both', expand=True)
 
-            cal = calendar.Calendar(firstweekday=0)  # 月曜日=0
+            cal = calendar.Calendar(firstweekday=6)  # 月曜日=0, 日曜日=6
             month_days = cal.monthdayscalendar(year, month)
+
+            # 月によっては6週表示が必要な場合があるため、6週に満たない場合は追加
+            while len(month_days) < 6:
+                month_days.append([0]*7)
 
             for week in month_days:
                 week_frame = tk.Frame(dates_frame)
@@ -110,8 +117,8 @@ class CalendarUI(tk.Toplevel):
                 for day_idx, day in enumerate(week):
                     if day == 0:
                         # 月に属さない日も同じUIにする
-                        label = tk.Label(week_frame, text=' ', width=4, height=2, borderwidth=1, relief='solid', bg='white', font=("Arial", 10))
-                        label.grid(row=0, column=day_idx, sticky='nsew')
+                        btn = DButton(week_frame, text='', state='disabled', bg='white')
+                        btn.grid(row=0, column=day_idx, sticky='nsew')
                     else:
                         is_holiday = self.manager.is_holiday(year, month, day)
                         if is_holiday:
@@ -119,11 +126,7 @@ class CalendarUI(tk.Toplevel):
                         else:
                             bg_color = 'white'
 
-                        btn = tk.Button(week_frame, text=str(day), width=4, height=2,
-                                        bg=bg_color,
-                                        relief='solid',
-                                        bd=1,
-                                        font=("Arial", 10),
+                        btn = DButton(week_frame, text=str(day), bg=bg_color,
                                         command=lambda y=year, m=month, d=day: self.toggle_holiday(y, m, d))
                         btn.grid(row=0, column=day_idx, sticky='nsew')
 
@@ -155,20 +158,22 @@ class CalendarUI(tk.Toplevel):
             # 休日から削除
             self.manager.remove_holiday(year, month, day)
             new_bg = 'white'
-            holiday_type = "平日"
         else:
             # 休日に追加
             self.manager.add_holiday(year, month, day)
             new_bg = 'lightcoral'
-            holiday_type = "休日"
 
         # ボタンの背景色を更新
         btn = self.button_refs.get((year, month, day))
         if btn:
             btn.configure(bg=new_bg)
-            # ツールチップを更新
-            CreateToolTip(btn, f"{year}/{month}/{day}\n{holiday_type}")
 
     def update_calendar(self, event=None):
         """年が変更されたときにカレンダーを更新する"""
         self.generate_calendar()
+
+# デフォルトのボタンクラス（重複しないように修正）
+class DButton(tk.Button):
+    def __init__(self, master=None, **kw):
+        super().__init__(master, **kw)
+        self.configure(font=("游ゴシック", 14), height=1, width=4, relief="solid", bd=1)
