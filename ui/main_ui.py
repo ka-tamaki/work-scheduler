@@ -1,31 +1,18 @@
 # ui/main_ui.py
-
 import tkinter as tk
 from tkinter import ttk, messagebox
+from data.excel_generator import ExcelGenerator
+from utils.path_helper import get_template_path, get_output_path
 from datetime import datetime, timedelta
 import os
-from data.excel_generator import ExcelGenerator  # Excel生成機能
-from ui.calendar_ui import CalendarUI
-from config import EXCEL_OUTPUT_DIR  # 設定ファイルから出力ディレクトリをインポート
 
-class MainUI(tk.Frame):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.parent = parent
-        self.parent.title("工程表生成")
-        self.pack(fill=tk.BOTH, expand=True)
-
-        # メニューバーの作成
-        menubar = tk.Menu(self.parent)
-        self.parent.config(menu=menubar)
-
-        # メニューの追加
-        factory_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="メニュー", menu=factory_menu)
-        factory_menu.add_command(label="休日設定", command=self.open_factory_settings)
+class MainUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("製造工程表自動生成ツール")
 
         # タイトル入力欄
-        title_frame = tk.Frame(self)
+        title_frame = tk.Frame(root)
         title_frame.pack(pady=10)
 
         tk.Label(title_frame, text="工事名:").pack(side=tk.LEFT, padx=5)
@@ -33,8 +20,8 @@ class MainUI(tk.Frame):
         self.title_entry = tk.Entry(title_frame, textvariable=self.title_var, width=30)
         self.title_entry.pack(side=tk.LEFT)
 
-        # 開始年月と終了年月の選択
-        selection_frame = tk.Frame(self)
+        # 期間選択
+        selection_frame = tk.Frame(root)
         selection_frame.pack(pady=20)
 
         # 開始年月の選択
@@ -54,12 +41,19 @@ class MainUI(tk.Frame):
         self.end_date_cb = ttk.Combobox(end_frame, textvariable=self.end_date_var, values=[], width=10, state='readonly')
         self.end_date_cb.pack(side=tk.LEFT)
 
-        # 工程表生成ボタン
-        generate_button = tk.Button(self, text="工程表生成", command=self.generate_schedule)
-        generate_button.pack(pady=20)
+        # 工場選択
+        factory_frame = tk.Frame(root)
+        factory_frame.pack(pady=10)
+        tk.Label(factory_frame, text="工場選択:").pack(side=tk.LEFT, padx=5)
+        self.factory_var = tk.StringVar()
+        factories = ['yuki', 'kumagaya', 'shizuoka', 'kyoto', 'chiba']
+        self.factory_combo = ttk.Combobox(factory_frame, textvariable=self.factory_var, values=factories, width=15, state="readonly")
+        self.factory_combo.pack(side=tk.LEFT)
+        self.factory_combo.set(factories[0])
 
-        # Excel生成用の保存先ディレクトリ（設定ファイルから取得）
-        self.save_dir = EXCEL_OUTPUT_DIR
+        # 生成ボタン
+        generate_button = ttk.Button(root, text="工程表生成", command=self.generate_schedule)
+        generate_button.pack(pady=20)
 
         # 初期値の設定
         self.set_initial_dates()
@@ -67,7 +61,7 @@ class MainUI(tk.Frame):
     def generate_year_month_options(self):
         """年/月のオプションを生成（例: '2024/01'）"""
         current_year = datetime.now().year
-        years = range(current_year - 5, 2031)
+        years = range(current_year - 5, current_year + 21)  # 現在の5年前から20年後まで
         months = range(1, 13)
         options = []
         for year in years:
@@ -80,11 +74,11 @@ class MainUI(tk.Frame):
         now = datetime.now()
         start_date = now.strftime("%Y/%m")
         self.start_date_var.set(start_date)
-        # 計算後の終了年月を設定
+        # 終了年月のオプションを生成
+        self.end_date_cb['values'] = self.generate_end_date_options(now.year, now.month)
+        # 初期値として半年後を設定
         end_date = self.calculate_end_date(now.year, now.month)
         self.end_date_var.set(end_date)
-        # 更新された終了年月のオプションに反映
-        self.end_date_cb['values'] = self.generate_end_date_options(now.year, now.month)
         self.end_date_cb.current(0)
 
     def calculate_end_date(self, year, month, delta_months=6):
@@ -97,9 +91,20 @@ class MainUI(tk.Frame):
     def generate_end_date_options(self, start_year, start_month):
         """開始年月から半年後以降の終了年月のオプションを生成"""
         options = []
-        for i in range(0, 12):  # 半年後から1年後までのオプション
-            end_date = self.calculate_end_date(start_year, start_month, delta_months=6 + i)
-            options.append(end_date)
+        # 終了年月の範囲は開始年月から20年後まで
+        end_year = start_year + 20
+        end_month = start_month
+        current_year = start_year
+        current_month = start_month + 6  # 半年後から
+        if current_month > 12:
+            current_year += 1
+            current_month -= 12
+        while current_year < end_year or (current_year == end_year and current_month <= end_month):
+            options.append(f"{current_year}/{current_month:02d}")
+            current_month += 1
+            if current_month > 12:
+                current_month = 1
+                current_year += 1
         return options
 
     def update_end_date_options(self, event=None):
@@ -112,48 +117,46 @@ class MainUI(tk.Frame):
             self.end_date_cb['values'] = new_end_options
             # 初期値として半年後を設定
             new_end_date = self.calculate_end_date(year, month)
+            # 範囲内か確認
+            if new_end_date not in new_end_options:
+                new_end_date = new_end_options[0] if new_end_options else ""
             self.end_date_var.set(new_end_date)
             self.end_date_cb.current(0)
 
-    def open_factory_settings(self):
-        """工場設定（休日設定）画面を開く"""
-        CalendarUI(self)
-
     def generate_schedule(self):
-        """工程表を生成してExcelファイルを保存"""
         title = self.title_var.get().strip()
         if not title:
-            messagebox.showerror("エラー", "タイトルを入力してください。")
+            messagebox.showerror("入力エラー", "工事名を入力してください。")
             return
 
-        start_date = self.start_date_var.get()
-        end_date = self.end_date_var.get()
+        try:
+            start_date_str = self.start_date_var.get()
+            end_date_str = self.end_date_var.get()
 
-        if not start_date or not end_date:
-            messagebox.showerror("エラー", "開始年月と終了年月を選択してください。")
+            # 日付のパース
+            start_year, start_month = map(int, start_date_str.split('/'))
+            end_year, end_month = map(int, end_date_str.split('/'))
+            start_date = datetime(start_year, start_month, 1)
+            end_date = datetime(end_year, end_month, 1)
+
+            if start_date > end_date:
+                messagebox.showerror("入力エラー", "開始年月が終了年月より後になっています。")
+                return
+        except ValueError:
+            messagebox.showerror("入力エラー", "有効な年月を選択してください。")
             return
 
-        # 年と月を分割
-        start_year, start_month = map(int, start_date.split('/'))
-        end_year, end_month = map(int, end_date.split('/'))
-
-        # 開始年月と終了年月の整合性をチェック
-        start = datetime(start_year, start_month, 1)
-        end = datetime(end_year, end_month, 1)
-        if end < start:
-            messagebox.showerror("エラー", "終了年月が開始年月より前になっています。")
+        factory = self.factory_var.get()
+        template_path = get_template_path()
+        if not os.path.exists(template_path):
+            messagebox.showerror("ファイルエラー", "テンプレートファイルが見つかりません。")
             return
 
-        # Excel生成クラスを初期化
-        generator = ExcelGenerator()
+        output_path = get_output_path(title, start_date, end_date)
 
-        # スケジュールを生成
-        generator.generate_schedule(
-            title,
-            start_year,
-            start_month,
-            end_year,
-            end_month,
-            template_path=None,  # 設定ファイルからテンプレートパスを取得
-            save_dir=self.save_dir
-        )
+        try:
+            generator = ExcelGenerator(template_path)
+            generator.generate_excel(title, start_date, end_date, factory, output_path)
+            messagebox.showinfo("成功", f"工程表が生成されました。\n{output_path}")
+        except Exception as e:
+            messagebox.showerror("エラー", f"工程表の生成中にエラーが発生しました。\n{e}")

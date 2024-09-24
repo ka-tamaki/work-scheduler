@@ -1,128 +1,98 @@
 # data/excel_generator.py
-
-import os
-import calendar
-from openpyxl import load_workbook
-from openpyxl.styles import Alignment, Font, PatternFill
+import openpyxl
+from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
+import json
+import os
 from datetime import datetime
-from data.holidays import HolidaysManager
-from tkinter import messagebox
-from config import EXCEL_TEMPLATE_PATH, EXCEL_OUTPUT_DIR
+from utils.path_helper import get_template_path
 
 class ExcelGenerator:
-    def __init__(self):
-        self.manager = HolidaysManager()
+    def __init__(self, template_path):
+        self.template_path = template_path
+        self.wb = openpyxl.load_workbook(template_path)
+        self.ws = self.wb.active
 
-    def is_holiday(self, year, month, day):
-        """指定された年、月、日が休日かどうかを判定します。"""
-        return self.manager.is_holiday(year, month, day)
+    def apply_holidays(self, holidays, start_row):
+        for holiday in holidays:
+            date_str = holiday['date']
+            date = datetime.strptime(date_str, '%Y-%m-%d')
+            day = date.day
+            weekday = date.strftime('%a')  # 'Mon', 'Tue', etc.
 
-    def gregorian_to_reiwa(self, year, month):
-        """
-        西暦を令和に変換する関数。
-        令和元年は2019年。
-        """
-        if year < 2019:
-            raise ValueError("令和は2019年以降の年です。")
-        reiwa_year = year - 2018
-        return f"令和{reiwa_year}年{month}月"
+            # 日にちのセルを特定 (例: D21～AH21が日にち)
+            col = 3 + day  # D列は4列目なのでインデックス調整
+            col_letter = get_column_letter(col + 1)  # openpyxlは1始まり
 
-    def generate_schedule(self, title, start_year, start_month, end_year, end_month, template_path=None, save_dir=None):
-        try:
-            # テンプレートのパスを設定ファイルから取得
-            if template_path is None:
-                template_path = EXCEL_TEMPLATE_PATH
-            if save_dir is None:
-                save_dir = EXCEL_OUTPUT_DIR
+            # 曜日のセルはD22～AH22
+            day_cell = f"{col_letter}{start_row}"
+            weekday_cell = f"{col_letter}{start_row + 1}"
 
-            if not os.path.exists(template_path):
-                messagebox.showerror("エラー", f"テンプレートファイル '{template_path}' が見つかりません。")
-                return
+            # 赤文字に設定
+            red_font = Font(color="FF0000")
+            if self.ws[day_cell].value == day:
+                self.ws[day_cell].font = red_font
+            if self.ws[weekday_cell].value.startswith(weekday):
+                self.ws[weekday_cell].font = red_font
 
-            # テンプレートを読み込む
-            wb = load_workbook(template_path)
-            ws = wb.active  # アクティブなシートを選択
+    def set_parameters(self, creation_date, title, month, start_row):
+        # 最初の月のみ作成日とタイトルを設定
+        self.ws[f'AE{start_row}'] = creation_date  # 作成日
+        self.ws[f'A{start_row}'] = f"{title}　製造工程計画"  # タイトル
+        self.ws[f'D{start_row}'] = f"令和{month.year - 2018}年{month.month}月"  # 月
 
-            # 作成日を入力（セル位置はテンプレートに合わせて調整）
-            now = datetime.now()
-            current_date_str = now.strftime('%Y/%m/%d')
-            ws['AE1'].value = current_date_str
+    def set_month_parameters(self, month, start_row):
+        # 二つ目以降の月は月のみ設定
+        self.ws[f'D{start_row}'] = f"令和{month.year - 2018}年{month.month}月"  # 月
 
-            # タイトルを入力（セル位置はテンプレートに合わせて調整）
-            ws['A3'].value = f"{title} 製造工程計画"
+    def save_and_open(self, output_path):
+        self.wb.save(output_path)
+        os.startfile(output_path)  # Windowsの場合
 
-            # テーブルの開始位置
-            first_table_start_row = 8
-            rows_per_table = 13  # 各月のテーブルが13行を使用
+    def generate_excel(self, title, start_date, end_date, factory, output_path):
+        current_date = start_date
+        start_row = 21  # 初期の開始行（テンプレートに合わせて調整）
+        is_first_month = True  # 最初の月かどうかのフラグ
 
-            # 現在の行を初期化
-            current_row = first_table_start_row
+        while current_date <= end_date:
+            try:
+                if is_first_month:
+                    # 最初の月は作成日とタイトルを設定
+                    creation_date = datetime.today().strftime('%Y/%m/%d')
+                    self.set_parameters(creation_date, title, current_date, start_row)
+                    is_first_month = False
+                else:
+                    # 二つ目以降の月は月のみ設定
+                    self.set_month_parameters(current_date, start_row)
 
-            # 開始年月から終了年月までループ
-            year = start_year
-            month = start_month
+                # 休日情報の読み込み
+                holidays_file = os.path.join('holidays', f'{factory}.json')
+                with open(holidays_file, 'r', encoding='utf-8') as f:
+                    holidays = json.load(f)
 
-            while (year < end_year) or (year == end_year and month <= end_month):
-                # 月のタイトルを入力
-                reiwa_month = self.gregorian_to_reiwa(year, month)
-                ws.cell(row=current_row, column=4, value=reiwa_month)
+                # 期間の月に該当する休日をフィルタリング
+                month_holidays = [
+                    h for h in holidays 
+                    if datetime.strptime(h['date'], '%Y-%m-%d').year == current_date.year 
+                    and datetime.strptime(h['date'], '%Y-%m-%d').month == current_date.month
+                ]
 
-                # 月の日数を取得
-                last_day = calendar.monthrange(year, month)[1]
+                # 休日を適用
+                self.apply_holidays(month_holidays, start_row)
 
-                # 日にちを入力
-                for day in range(1, last_day + 1):
-                    col = 4 + day - 1  # D列は4
-                    ws.cell(row=current_row + 1, column=col, value=day)
-
-                # 曜日を入力
-                for day in range(1, last_day + 1):
-                    date = datetime(year, month, day)
-                    weekday_en = date.strftime('%a')  # 'Mon', 'Tue', etc.
-                    # 英語の曜日を日本語にマッピング
-                    weekday_jp = {
-                        'Mon': '月',
-                        'Tue': '火',
-                        'Wed': '水',
-                        'Thu': '木',
-                        'Fri': '金',
-                        'Sat': '土',
-                        'Sun': '日'
-                    }.get(weekday_en, '')
-                    col = 4 + day - 1
-                    ws.cell(row=current_row + 2, column=col, value=weekday_jp)
-
-                # 休日のセルに色を付ける（日にちと曜日のみ）
-                for day in range(1, last_day + 1):
-                    if self.is_holiday(year, month, day):
-                        col = 4 + day - 1
-                        # 日にちのセル（current_row +1）と曜日のセル（current_row +2）に色を付ける
-                        for row_offset in [1, 2]:  # 1: 日にち, 2: 曜日
-                            cell_row = current_row + row_offset
-                            cell = ws.cell(row=cell_row, column=col)
-                            cell.font = Font(name='游ゴシック', size=14, bold=True, color='FF0000')
-
-                # 次の月のテーブル開始行を更新
-                current_row += rows_per_table
-
-                # 月をインクリメント
-                if month == 12:
-                    year += 1
+                # 次の月へ
+                if current_date.month == 12:
+                    year = current_date.year + 1
                     month = 1
                 else:
-                    month += 1
+                    year = current_date.year
+                    month = current_date.month + 1
+                current_date = datetime(year, month, 1)
 
-            # 保存先ディレクトリの作成
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir)
+                # 次の月の開始行を13行下げる
+                start_row += 13
+            except Exception as e:
+                raise Exception(f"月 {current_date.strftime('%Y/%m')} の工程表生成中にエラーが発生しました: {e}")
 
-            # 保存ファイル名の作成
-            formatted_date = now.strftime("%Y-%m-%d_%H-%M-%S")
-            save_filename = f"{title}製造工程表_{formatted_date}.xlsx"
-            save_path = os.path.join(save_dir, save_filename)
-            wb.save(save_path)
-
-            messagebox.showinfo("成功", f"製造工程表を '{save_path}' として保存しました。")
-        except Exception as e:
-            messagebox.showerror("エラー", f"製造工程表の生成中にエラーが発生しました。\n{e}")
+        # 保存して開く
+        self.save_and_open(output_path)
