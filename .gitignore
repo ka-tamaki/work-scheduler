@@ -1,0 +1,38 @@
+# ビルド生成物
+dist/
+build/
+
+# 実行可能ファイル
+*.exe
+*.pkg
+
+# PyInstallerの設定ファイル
+*.spec
+
+# 仮想環境
+venv/
+env/
+ENV/
+venv.bak/
+env.bak/
+
+# Pythonのキャッシュ
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDEやエディタ関連
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS関連
+Thumbs.db
+.DS_Store
+
+# ログファイル
+*.log
+
+# 出力ディレクトリ
+output/
