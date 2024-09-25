@@ -61,10 +61,11 @@ class MainUI:
     def generate_year_month_options(self):
         """年/月のオプションを生成（例: '2024/01'）"""
         current_year = datetime.now().year
-        years = range(current_year - 5, current_year + 21)  # 現在の5年前から20年後まで
+        start_year = current_year - 5
+        end_year = current_year + 20
         months = range(1, 13)
         options = []
-        for year in years:
+        for year in range(start_year, end_year + 1):
             for month in months:
                 options.append(f"{year}/{month:02d}")
         return options
@@ -83,28 +84,22 @@ class MainUI:
 
     def calculate_end_date(self, year, month, delta_months=6):
         """指定された年と月からdelta_months後の年月を計算"""
-        month += delta_months
-        year += (month - 1) // 12
-        month = (month - 1) % 12 + 1
-        return f"{year}/{month:02d}"
+        total_month = year * 12 + month + delta_months
+        new_year = total_month // 12
+        new_month = total_month % 12
+        if new_month == 0:
+            new_month = 12
+            new_year -= 1
+        return f"{new_year}/{new_month:02d}"
 
     def generate_end_date_options(self, start_year, start_month):
-        """開始年月から半年後以降の終了年月のオプションを生成"""
+        """開始年月から半年後から20年後までの終了年月のオプションを生成"""
         options = []
-        # 終了年月の範囲は開始年月から20年後まで
-        end_year = start_year + 20
-        end_month = start_month
-        current_year = start_year
-        current_month = start_month + 6  # 半年後から
-        if current_month > 12:
-            current_year += 1
-            current_month -= 12
-        while current_year < end_year or (current_year == end_year and current_month <= end_month):
-            options.append(f"{current_year}/{current_month:02d}")
-            current_month += 1
-            if current_month > 12:
-                current_month = 1
-                current_year += 1
+        # 開始年月から20年後までの各月を追加
+        for delta in range(6, 12 * 20 + 1):
+            end_date = self.calculate_end_date(start_year, start_month, delta)
+            if end_date not in options:
+                options.append(end_date)
         return options
 
     def update_end_date_options(self, event=None):
@@ -157,6 +152,5 @@ class MainUI:
         try:
             generator = ExcelGenerator(template_path)
             generator.generate_excel(title, start_date, end_date, factory, output_path)
-            messagebox.showinfo("成功", f"工程表が生成されました。\n{output_path}")
         except Exception as e:
             messagebox.showerror("エラー", f"工程表の生成中にエラーが発生しました。\n{e}")
