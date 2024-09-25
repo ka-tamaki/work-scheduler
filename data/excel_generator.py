@@ -26,14 +26,6 @@ class ExcelGenerator:
         return f"令和{reiwa_year}年{month}月"
     
     def is_holiday(self, year, month, day):
-        """
-        指定された年月日が休日かどうかを確認します。
-        日本の土日祝日および工場固有の休日を考慮します。
-        :param year: 年（整数）
-        :param month: 月（整数）
-        :param day: 日（整数）
-        :return: 休日であればTrue、そうでなければFalse
-        """
         # 年と月を文字列に変換
         year_str = str(year)
         month_str = str(month)
@@ -48,24 +40,12 @@ class ExcelGenerator:
         return False
 
     def get_top_left_cell(self, cell):
-        """
-        指定されたセルが結合セルの一部である場合、
-        結合セルの左上のセルを返します。
-        結合セルでない場合は、そのセル自身を返します。
-        """
         for merged_range in self.ws.merged_cells.ranges:
             if cell.coordinate in merged_range:
                 return self.ws.cell(row=merged_range.min_row, column=merged_range.min_col)
         return cell
 
     def apply_holidays(self, holidays, start_row, year, month):
-        """
-        指定された月の休日を適用し、セルのフォントを赤色に設定します。
-        :param holidays: 休日の日付リスト（例: [1, 6, 7, ...]）
-        :param start_row: 現在の月ブロックの開始行
-        :param year: 年（整数）
-        :param month: 月（整数）
-        """
         for day in holidays:
             try:
                 # 日にちのセルを特定 (例: D8～AH8が日にち)
@@ -112,19 +92,19 @@ class ExcelGenerator:
 
     def set_parameters(self, creation_date, title, month, start_row):
         """最初の月にのみ作成日とタイトルを設定"""
-        # AE{start_row} に作成日を設定（結合セルの場合は左上を取得）
+        # AE{start_row} に作成日を設定
         cell_coord = f'AE{start_row}'
         cell = self.ws[cell_coord]
         top_left_cell = self.get_top_left_cell(cell)
         top_left_cell.value = creation_date
 
-        # A{start_row} にタイトルを設定（結合セルの場合は左上を取得）
+        # A{start_row} にタイトルを設定
         cell_coord = f'A{start_row}'
         cell = self.ws[cell_coord]
         top_left_cell = self.get_top_left_cell(cell)
         top_left_cell.value = f"{title} 製造工程計画"
 
-        # D{start_row} に月を設定（結合セルの場合は左上を取得）
+        # D{start_row} に月を設定
         cell_coord = f'D{start_row}'
         cell = self.ws[cell_coord]
         top_left_cell = self.get_top_left_cell(cell)
@@ -132,7 +112,7 @@ class ExcelGenerator:
 
     def set_month_parameters(self, month, start_row):
         """二つ目以降の月は月のみ設定"""
-        # D{start_row} に月を設定（結合セルの場合は左上を取得）
+        # D{start_row} に月を設定
         cell_coord = f'D{start_row}'
         cell = self.ws[cell_coord]
         top_left_cell = self.get_top_left_cell(cell)

@@ -46,10 +46,18 @@ class MainUI:
         factory_frame.pack(pady=10)
         tk.Label(factory_frame, text="工場選択:").pack(side=tk.LEFT, padx=5)
         self.factory_var = tk.StringVar()
-        factories = ['yuki', 'kumagaya', 'shizuoka', 'kyoto', 'chiba']
-        self.factory_combo = ttk.Combobox(factory_frame, textvariable=self.factory_var, values=factories, width=15, state="readonly")
+        self.factories_mapping = {
+            '結城': 'yuki',
+            '熊谷': 'kumagaya',
+            '静岡': 'shizuoka',
+            '京都': 'kyoto',
+            '千葉': 'chiba',
+            '富山': 'toyama'  # 例として追加
+        }
+        factories_display = list(self.factories_mapping.keys())
+        self.factory_combo = ttk.Combobox(factory_frame, textvariable=self.factory_var, values=factories_display, width=15, state="readonly")
         self.factory_combo.pack(side=tk.LEFT)
-        self.factory_combo.set(factories[0])
+        self.factory_combo.set(factories_display[0])
 
         # 生成ボタン
         generate_button = ttk.Button(root, text="工程表生成", command=self.generate_schedule)
@@ -140,6 +148,13 @@ class MainUI:
         except ValueError:
             messagebox.showerror("入力エラー", "有効な年月を選択してください。")
             return
+        
+        factory_display = self.factory_var.get()
+        factory_internal = self.factories_mapping.get(factory_display)
+
+        if not factory_internal:
+            messagebox.showerror("選択エラー", "選択された工場の識別子が見つかりません。")
+            return
 
         factory = self.factory_var.get()
         template_path = get_template_path()
@@ -151,6 +166,6 @@ class MainUI:
 
         try:
             generator = ExcelGenerator(template_path)
-            generator.generate_excel(title, start_date, end_date, factory, output_path)
+            generator.generate_excel(title, start_date, end_date, factory_internal, output_path)
         except Exception as e:
             messagebox.showerror("エラー", f"工程表の生成中にエラーが発生しました。\n{e}")

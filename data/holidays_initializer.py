@@ -10,7 +10,7 @@ def initialize_holidays():
     各工場ごとに日本の土日祝日情報をJSONファイルとして生成・更新
     """
     # 工場リスト
-    factories = ['yuki', 'kumagaya', 'shizuoka', 'kyoto', 'chiba']
+    factories = ['yuki', 'kumagaya', 'shizuoka', 'kyoto', 'chiba', 'toyama']
     
     # 現在の年
     current_year = datetime.now().year
