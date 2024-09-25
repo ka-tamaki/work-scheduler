@@ -7,7 +7,6 @@ import json
 import os
 import calendar
 from datetime import datetime
-from utils.path_helper import get_template_path
 
 class ExcelGenerator:
     def __init__(self, template_path):

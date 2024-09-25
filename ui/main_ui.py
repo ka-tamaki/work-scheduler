@@ -2,9 +2,21 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from data.excel_generator import ExcelGenerator
-from utils.path_helper import get_template_path, get_output_path
+from utils.path_helper import resource_path
 from datetime import datetime, timedelta
 import os
+import logging
+
+def get_template_path():
+    path = resource_path(os.path.join('templates', 'template.xlsx'))
+    return path
+
+def get_output_path(title, start_date, end_date):
+    output_dir = resource_path('output')
+    os.makedirs(output_dir, exist_ok=True)
+    filename = f"{title}_{start_date.strftime('%Y%m')}_{end_date.strftime('%Y%m')}.xlsx"
+    full_path = os.path.join(output_dir, filename)
+    return full_path
 
 class MainUI:
     def __init__(self, root):
@@ -52,7 +64,7 @@ class MainUI:
             '静岡': 'shizuoka',
             '京都': 'kyoto',
             '千葉': 'chiba',
-            '富山': 'toyama'  # 例として追加
+            '富山': 'toyama'
         }
         factories_display = list(self.factories_mapping.keys())
         self.factory_combo = ttk.Combobox(factory_frame, textvariable=self.factory_var, values=factories_display, width=15, state="readonly")
@@ -156,11 +168,10 @@ class MainUI:
             messagebox.showerror("選択エラー", "選択された工場の識別子が見つかりません。")
             return
 
-        factory = self.factory_var.get()
         template_path = get_template_path()
         if not os.path.exists(template_path):
-            messagebox.showerror("ファイルエラー", "テンプレートファイルが見つかりません。")
-            return
+            logging.error(f"Template file not found: {template_path}")
+            raise FileNotFoundError(f"Template file not found: {template_path}")
 
         output_path = get_output_path(title, start_date, end_date)
 
