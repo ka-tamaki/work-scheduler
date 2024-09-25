@@ -12,7 +12,5 @@ if __name__ == "__main__":
 
 
 '''
-pyinstaller --onefile --add-data "templates/template.xlsx;templates" \
-    --add-data "holidays/*.json;holidays" \
-    main.py
+pyinstaller --onefile --windowed --add-data "data/holidays;data/holidays" --add-data "templates/template.xlsx;templates" ui/main_ui.py
 '''
