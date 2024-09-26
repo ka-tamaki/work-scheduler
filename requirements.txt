@@ -1,3 +1,5 @@
 openpyxl
 jpholiday
 pyinstaller
+packaging
+requests
