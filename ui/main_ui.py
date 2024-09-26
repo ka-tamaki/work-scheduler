@@ -59,12 +59,12 @@ class MainUI:
         tk.Label(factory_frame, text="工場選択:").pack(side=tk.LEFT, padx=5)
         self.factory_var = tk.StringVar()
         self.factories_mapping = {
-            '結城': 'yuki',
-            '熊谷': 'kumagaya',
-            '静岡': 'shizuoka',
-            '京都': 'kyoto',
+            '結城': 'kihon',
+            '熊谷': 'kihon',
+            '静岡': 'kihon',
+            '京都': 'kihon',
             '千葉': 'chiba',
-            '富山': 'toyama'
+            '富山': 'kihon'
         }
         factories_display = list(self.factories_mapping.keys())
         self.factory_combo = ttk.Combobox(factory_frame, textvariable=self.factory_var, values=factories_display, width=15, state="readonly")
