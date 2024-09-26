@@ -15,6 +15,7 @@ if __name__ == "__main__":
 exe化
 
 pyinstaller --onefile --windowed `
+--icon "assets\icon.ico" `
 --exclude-module holidays_initializer `
 --add-data "templates/template.xlsx;templates" `
 --add-data "data/holidays;data/holidays" `
