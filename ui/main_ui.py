@@ -22,6 +22,7 @@ class MainUI:
     def __init__(self, root):
         self.root = root
         self.root.title("製造工程表自動生成ツール")
+        self.root.geometry("500x400")
 
         # タイトル入力欄
         title_frame = tk.Frame(root)

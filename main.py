@@ -13,11 +13,11 @@ if __name__ == "__main__":
 
 '''
 exe化
-pyinstaller --onefile --windowed ^
-    --exclude-module holidays_initializer ^
-    --add-data "templates/template.xlsx;templates" ^
-    --add-data "data/holidays;data/holidays" ^
-    --hidden-import utils.path_helper ^
-    main.py
 
+pyinstaller --onefile --windowed `
+--exclude-module holidays_initializer `
+--add-data "templates/template.xlsx;templates" `
+--add-data "data/holidays;data/holidays" `
+--hidden-import utils.path_helper `
+main.py
 '''
