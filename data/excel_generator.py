@@ -2,7 +2,6 @@
 from tkinter import messagebox
 import openpyxl
 from openpyxl.styles import Font, PatternFill
-from openpyxl.utils import get_column_letter
 import json
 import os
 import calendar
@@ -118,7 +117,7 @@ class ExcelGenerator:
                         for row_offset in range(1, rows_per_table - 2):
                             cell_row = current_row + row_offset
                             cell = self.ws.cell(row=cell_row, column=col)
-                            cell.font = Font(name='游ゴシック', size=14, bold=True, color='FF0000')
+                            cell.font = Font(name='游ゴシック', size=14, bold=True, color='ff0000')
                             cell.fill = PatternFill(fill_type='solid', fgColor='ffc7ce')
 
                 # 次の月のテーブル開始行を更新
