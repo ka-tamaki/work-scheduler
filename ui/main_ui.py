@@ -5,11 +5,7 @@ from data.excel_generator import ExcelGenerator
 from utils.path_helper import resource_path
 from datetime import datetime, timedelta
 import os
-import logging
 
-def get_template_path():
-    path = resource_path(os.path.join('templates', 'template.xlsx'))
-    return path
 
 def get_output_path(title, start_date, end_date):
     output_dir = resource_path('output')
@@ -169,15 +165,10 @@ class MainUI:
             messagebox.showerror("選択エラー", "選択された工場の識別子が見つかりません。")
             return
 
-        template_path = get_template_path()
-        if not os.path.exists(template_path):
-            logging.error(f"Template file not found: {template_path}")
-            raise FileNotFoundError(f"Template file not found: {template_path}")
-
         output_path = get_output_path(title, start_date, end_date)
 
         try:
-            generator = ExcelGenerator(template_path)
+            generator = ExcelGenerator()
             generator.generate_excel(title, start_date, end_date, factory_internal, output_path)
         except Exception as e:
             messagebox.showerror("エラー", f"工程表の生成中にエラーが発生しました。\n{e}")
