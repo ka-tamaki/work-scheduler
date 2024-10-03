@@ -31,15 +31,17 @@ class ExcelGenerator:
         start_col = 1 # A列
         end_col = 36 # AJ列
         dashed_side = Side(style='hair', color='000000') # 薄い点線
+        # ヘッダー部分以外
         for row in range(start_row + 3, end_row):
             self.ws.row_dimensions[row].height = 36.8
+            for col in range(start_col, end_col + 1):
+                cell.border = Border(top=dashed_side, bottom=dashed_side, right=dashed_side, left=dashed_side) # 罫線の設定
+        # ヘッダー部分含む
         for row in range(start_row, end_row):
             for col in range(start_col, end_col + 1):
-                # フォントの設定
                 cell = self.ws.cell(row=row, column=col)
-                cell.font = Font(name='游ゴシック', size=14, bold=True, color='000000')
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-                cell.border = Border(top=dashed_side, bottom=dashed_side, right=dashed_side, left=dashed_side)
+                cell.font = Font(name='游ゴシック', size=14, bold=True, color='000000') # フォントの設定
+                cell.alignment = Alignment(horizontal="center", vertical="center") # 文字位置の設定
 
         
     
@@ -154,11 +156,6 @@ class ExcelGenerator:
                         cell_row = current_row + row_offset
                         # self.ws.cell(row=cell_row, column=36, value=f"=AJ{str(cell_row - rows_per_table)}-AI{str(cell_row)})")
 
-                # 罫線の設定
-                bold_side = Side(style='medium', color='000000') # 太線
-                thin_side = Side(style='thin', color='000000') # 細線
-                items_cell.border = Border(top=bold_side, bottom=bold_side, left=bold_side)
-
                 # 月のタイトルを入力
                 reiwa_month = self.gregorian_to_reiwa(year, month)
                 self.ws.merge_cells(start_row=current_row, start_column=4, end_row=current_row, end_column=34) # セル結合
@@ -195,6 +192,12 @@ class ExcelGenerator:
                 # フォントの適用
                 self.font_template(current_row, current_row + rows_per_table - 2)
                 titleCell.font = Font(name='游ゴシック', size=20, bold=True, color='000000')
+
+                # 罫線の設定
+                bold_side = Side(style='medium', color='000000') # 太線
+                thin_side = Side(style='thin', color='000000') # 細線
+                head_border = Border(top=bold_side, bottom=bold_side, right=bold_side, left=bold_side)
+                head_border = Border(top=bold_side, bottom=bold_side, right=bold_side, left=bold_side)
 
                 # 休日のセルに色を付ける（楯列すべて）
                 for day in range(1, last_day + 1):
