@@ -1,17 +1,35 @@
 # data/excel_generator.py
 from tkinter import messagebox
-import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 import json
 import os
 import calendar
+import xlwings as xw
+from xlwings.constants import HAlign, VAlign, BorderWeight, LineStyle
 from datetime import datetime
 
 class ExcelGenerator:
     def __init__(self):
-        self.wb = openpyxl.Workbook()
-        self.ws = self.wb.active
-        self.ws.title = "製造工程"
+        self.wb = xw.Book()
+        self.ws = self.wb.sheets.active
+        self.ws.name = "製造工程表"
+        self.wb.sheets.add("出荷予定表")
+
+    def format_range(self, cell_value, range_name, name='游ゴシック', size=14, bold=True):
+        """
+        セル範囲のフォーマットを設定する関数
+        """
+        # セル範囲を取得
+        self.select_range = range_name
+
+        # 水平方向と垂直方向を中央揃え
+        self.select_range.api.HorizontalAlignment = HAlign.xlHAlignCenterAcrossSelection
+        self.select_range.api.VerticalAlignment = VAlign.xlVAlignCenter
+
+        # フォント設定
+        self.select_range.value = cell_value
+        self.select_range.api.Font.Name = name
+        self.select_range.api.Font.Size = size
+        self.select_range.api.Font.Bold = bold
 
     def gregorian_to_reiwa(self, year, month):
         """
@@ -22,28 +40,6 @@ class ExcelGenerator:
             raise ValueError("令和は2019年以降の年です。")
         reiwa_year = year - 2018
         return f"令和{reiwa_year}年{month}月"
-    
-    def font_template(self, start_row, end_row):
-        """
-        表の入力部分の行高さ、フォントを設定。
-        generate_excel内でfor文により各表に適用。
-        """
-        start_col = 1 # A列
-        end_col = 36 # AJ列
-        dashed_side = Side(style='hair', color='000000') # 薄い点線
-        # ヘッダー部分以外
-        for row in range(start_row + 3, end_row):
-            self.ws.row_dimensions[row].height = 36.8
-            for col in range(start_col, end_col + 1):
-                cell.border = Border(top=dashed_side, bottom=dashed_side, right=dashed_side, left=dashed_side) # 罫線の設定
-        # ヘッダー部分含む
-        for row in range(start_row, end_row):
-            for col in range(start_col, end_col + 1):
-                cell = self.ws.cell(row=row, column=col)
-                cell.font = Font(name='游ゴシック', size=14, bold=True, color='000000') # フォントの設定
-                cell.alignment = Alignment(horizontal="center", vertical="center") # 文字位置の設定
-
-        
     
     def is_holiday(self, year, month, day):
         """
@@ -83,36 +79,39 @@ class ExcelGenerator:
             with open(holidays_file, 'r', encoding='utf-8') as f:
                 self.holidays_data = json.load(f)
             
-            # セル幅の設定
-            self.ws.sheet_view.zoomScale = 55
-            self.ws.column_dimensions['A'].width = 25
-            self.ws.column_dimensions['B'].width = 30
-            for cul in range(3, 38): # C列~AL列まで
-                self.ws.column_dimensions[openpyxl.utils.get_column_letter(cul)].width = 6
+            # セル幅、セル高の設定
+            self.ws.range('A:A').column_width = 25
+            self.ws.range('B:B').column_width = 30
+            self.ws.range('C:AL').column_width = 6
+            self.ws.range('1:1').row_height = 32.5
+            self.ws.range('3:3').row_height = 58.5
+            self.ws.range('4:4').row_height = 32.5
 
             # 作成日を入力
             now = datetime.now()
             current_date_str = now.strftime('%Y/%m/%d')
-            self.ws.merge_cells(start_row=1, start_column=31, end_row=1, end_column=36) # セル結合(AE1:AJ1)
-            self.ws.row_dimensions[1].height = 32.5
-            self.ws['AE1'].value = current_date_str
-            self.ws['AE1'].font = Font(name='游ゴシック', size=20, bold=True, color='000000')
-            self.ws['AE1'].alignment = Alignment(horizontal="right")
+            self.date_range = self.ws.range('AE1:AJ1')
+            self.date_range.value = current_date_str
+            self.date_range.api.HorizontalAlignment = HAlign.xlHAlignRight
+            self.date_range.api.Font.Name = '游ゴシック'
+            self.date_range.api.Font.Size = 20
+            self.date_range.api.Font.Bold = True
 
             # タイトルを入力
-            self.ws.merge_cells(start_row=3, start_column=1, end_row=3, end_column=36) # セル結合(A3:AJ3)
-            self.ws.row_dimensions[3].height = 58.5
-            self.ws['A3'].value = f"{title} 製造工程計画"
-            self.ws['A3'].font = Font(name='游ゴシック', size=36, bold=True, color='000000')
-            self.ws['A3'].alignment = Alignment(horizontal="center")
+            self.title_range = self.ws.range('A3:AJ3')
+            self.title_range.value = f"{title} 製造工程計画"
+            self.title_range.api.HorizontalAlignment = HAlign.xlHAlignCenterAcrossSelection
+            self.title_range.api.Font.Name = '游ゴシック'
+            self.title_range.api.Font.Size = 36
+            self.title_range.api.Font.Bold = True
 
             # 定型コメントを入力
-            self.ws.row_dimensions[4].height = 32.5
-            self.ws['A4'].value = "※以下の日程は生コン打設となります。"
-            self.ws['A4'].font = Font(name='游ゴシック', size=20, bold=True, color='000000')
-            self.ws['AJ4'].value = "ベルテクス株式会社"
-            self.ws['AJ4'].font = Font(name='游ゴシック', size=20, bold=True, color='000000')
-            self.ws['AJ4'].alignment = Alignment(horizontal="right")
+            self.ws.range('A4').value = "※以下の日程は生コン打設となります。"
+            self.ws.range('AJ4').value = "ベルテクス株式会社"
+            self.ws.range('AJ4').api.HorizontalAlignment = HAlign.xlHAlignRight
+            self.ws.range('A:A').api.Font.Name = '游ゴシック'
+            self.ws.range('A:A').api.Font.Size = 20
+            self.ws.range('A:A').api.Font.Bold = True
 
             # テーブルの開始位置
             first_table_start_row = 9
@@ -131,48 +130,57 @@ class ExcelGenerator:
             # 各月の表ループ
             while (year < end_year) or (year == end_year and month <= end_month):
                 # 各表のヘッダー部分作成
-                self.ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row + 2, end_column=1) # セル結合(項目)
-                items_cell = self.ws.cell(row=current_row, column=1, value="項目")
-                self.ws.merge_cells(start_row=current_row, start_column=2, end_row=current_row + 2, end_column=2) # セル結合(規格)
-                standards_cell = self.ws.cell(row=current_row, column=2, value="規格")
-                self.ws.merge_cells(start_row=current_row, start_column=3, end_row=current_row + 2, end_column=3) # セル結合(受注)
-                orders_cell = self.ws.cell(row=current_row, column=3, value="受注")
-                self.ws.merge_cells(start_row=current_row, start_column=35, end_row=current_row + 1, end_column=36) # セル結合(合計)
-                sums_cell = self.ws.cell(row=current_row, column=35, value="合計")
-                volumes_cell = self.ws.cell(row=current_row + 2, column=35, value="数量")
-                remains_cell = self.ws.cell(row=current_row + 2, column=36, value="残り")
+                self.items_range = self.ws.range(f'A{current_row}:A{current_row + 2}')
+                self.format_range("項目", self.items_range)
+                self.standards_range = self.ws.range(f'B{current_row}:B{current_row + 2}')
+                self.format_range("規格", self.standards_range)
+                self.orders_range = self.ws.range(f'C{current_row}:C{current_row + 2}')
+                self.format_range("受注", self.orders_range)
+                self.sums_range = self.ws.range(f'AI{current_row}:AJ{current_row + 1}')
+                self.format_range("合計", self.sums_range)
+                self.volumes_range = self.ws.range(f'AI{current_row + 2}:AI{current_row + 2}')
+                self.format_range("数量", self.volumes_range)
+                self.remains_range = self.ws.range(f'AJ{current_row + 2}:AJ{current_row + 2}')
+                self.format_range("残り", self.remains_range)
 
-                # 初期値、数式の設定
-                for row_offset in range(3, contents_rows + 3):
+                #セル高の設定
+                self.ws.range(f'{current_row}:{current_row}').row_height = 32.5
+                self.ws.range(f'{current_row + 1}:{current_row + 2}').row_height = 23
+
+                # 入力欄の設定
+                self.items_col = self.ws.range(f'A{current_row + 3}:A{current_row + contents_rows + 3}') # 項目
+                self.format_range("", self.items_col)
+                self.standards_col = self.ws.range(f'B{current_row + 3}:B{current_row + contents_rows + 3}') # 規格
+                self.format_range("", self.standards_col)
+                self.orders_col = self.ws.range(f'C{current_row + 3}:C{current_row + contents_rows + 3}') # 受注数
+                self.format_range("0", self.orders_col)
+                self.num_col = self.ws.range(f'D{current_row + 3}:AH{current_row + contents_rows + 3}') # 製造数
+                self.format_range("", self.num_col)
+                for row_offset in range(3, contents_rows + 3): # 月合計数
                     cell_row = current_row + row_offset
-                    self.ws.cell(row=cell_row, column=3, value="0") # 受注初期値＝０
-                    self.ws.cell(row=cell_row, column=35, value=f"=SUM(D{str(cell_row)}:AH{str(cell_row)})") # 合計数量の算出
-                if current_row == first_table_start_row: # 1つ目とそれ以降で計算を変更
-                    for row_offset in range(3, contents_rows + 3): # 残り数量の算出
-                        cell_row = current_row + row_offset
-                        # self.ws.cell(row=cell_row, column=36, value=f"=C{str(cell_row)}-AI{str(cell_row)})")
-                else:
-                    for row_offset in range(3, contents_rows + 3): # 前の月を踏まえた残り数量の算出
-                        cell_row = current_row + row_offset
-                        # self.ws.cell(row=cell_row, column=36, value=f"=AJ{str(cell_row - rows_per_table)}-AI{str(cell_row)})")
+                    self.format_range(f'=SUM(D{str(cell_row)}:AH{str(cell_row)})', self.ws.range(f'AI{cell_row}'))
+                for row_offset in range(3, contents_rows + 3): # 残りの計算
+                    cell_row = current_row + row_offset
+                    if current_row == first_table_start_row:
+                        self.format_range(f'=C{str(cell_row)}-AI{str(cell_row)})', self.ws.range(f'AJ{cell_row}'))
+                    else:
+                        self.format_range(f'=AJ{str(cell_row - rows_per_table)}-AI{str(cell_row)})', self.ws.range(f'AJ{cell_row}'))
 
                 # 月のタイトルを入力
-                reiwa_month = self.gregorian_to_reiwa(year, month)
-                self.ws.merge_cells(start_row=current_row, start_column=4, end_row=current_row, end_column=34) # セル結合
-                self.ws.row_dimensions[current_row].height = 32.5
-                titleCell = self.ws.cell(row=current_row, column=4, value=reiwa_month)
+                self.reiwa_month = self.gregorian_to_reiwa(year, month)
+                self.month_range = self.ws.range(f'D{current_row}:AH{current_row}')
+                self.format_range(self.reiwa_month, self.remains_range, size=20)
 
                 # 月の日数を取得
                 last_day = calendar.monthrange(year, month)[1]
 
                 # 日にちを入力
-                self.ws.row_dimensions[current_row + 1].height = 23
                 for day in range(1, last_day + 1):
                     col = 4 + day - 1  # D列は4
-                    cell = self.ws.cell(row=current_row + 1, column=col, value=day)
+                    cell = self.ws.cells(current_row + 1, col)
+                    self.format_range(day, cell)
                 
                 # 曜日を入力
-                self.ws.row_dimensions[current_row + 2].height = 23
                 for day in range(1, last_day + 1):
                     date = datetime(year, month, day)
                     weekday_en = date.strftime('%a')  # 'Mon', 'Tue', etc.
@@ -187,17 +195,42 @@ class ExcelGenerator:
                         'Sun': '日'
                     }.get(weekday_en, '')
                     col = 4 + day - 1
-                    cell = self.ws.cell(row=current_row + 2, column=col, value=weekday_jp)
-
-                # フォントの適用
-                self.font_template(current_row, current_row + rows_per_table - 2)
-                titleCell.font = Font(name='游ゴシック', size=20, bold=True, color='000000')
+                    cell = self.ws.cells(current_row + 2, col)
+                    self.format_range(weekday_jp, cell)
 
                 # 罫線の設定
-                bold_side = Side(style='medium', color='000000') # 太線
-                thin_side = Side(style='thin', color='000000') # 細線
-                head_border = Border(top=bold_side, bottom=bold_side, right=bold_side, left=bold_side)
-                head_border = Border(top=bold_side, bottom=bold_side, right=bold_side, left=bold_side)
+                for i in range(11, 13): # 表全体に細い点線
+                    border = self.ws.range(f'A{current_row}:AJ{current_row + contents_rows + 3}').api.Borders(i)
+                    border.LineStyle = LineStyle.xlDash
+                    border.Weight = BorderWeight.xlThin
+                for i in range(7, 11): # 表外側に太い実線
+                    border = self.ws.range(f'A{current_row}:AH{current_row + 2}').api.Borders(i)
+                    border.LineStyle = LineStyle.xlContinuous
+                    border.Weight = BorderWeight.xlMedium
+                for i in range(7, 11): # 表外側に太い実線
+                    border = self.ws.range(f'AI{current_row}:AJ{current_row + 2}').api.Borders(i)
+                    border.LineStyle = LineStyle.xlContinuous
+                    border.Weight = BorderWeight.xlMedium
+                for i in range(7, 11): # 表外側に太い実線
+                    border = self.ws.range(f'A{current_row + 3}:AH{current_row + contents_rows + 3}').api.Borders(i)
+                    border.LineStyle = LineStyle.xlContinuous
+                    border.Weight = BorderWeight.xlMedium
+                for i in range(7, 11): # 表外側に太い実線
+                    border = self.ws.range(f'AI{current_row + 3}:AJ{current_row + contents_rows + 3}').api.Borders(i)
+                    border.LineStyle = LineStyle.xlContinuous
+                    border.Weight = BorderWeight.xlMedium
+                border = self.ws.range(f'A{current_row}:A{current_row + contents_rows + 3}').api.Borders(8)
+                border.LineStyle = LineStyle.xlContinuous
+                border.Weight = BorderWeight.xlMedium
+                border = self.ws.range(f'B{current_row}:B{current_row + contents_rows + 3}').api.Borders(8)
+                border.LineStyle = LineStyle.xlContinuous
+                border.Weight = BorderWeight.xlMedium
+                border = self.ws.range(f'C{current_row}:C{current_row + contents_rows + 3}').api.Borders(8)
+                border.LineStyle = LineStyle.xlContinuous
+                border.Weight = BorderWeight.xlMedium
+                border = self.ws.range(f'C{current_row}:C{current_row + contents_rows + 3}').api.Borders(8)
+                border.LineStyle = LineStyle.xlContinuous
+                border.Weight = BorderWeight.xlMedium
 
                 # 休日のセルに色を付ける（楯列すべて）
                 for day in range(1, last_day + 1):
@@ -205,9 +238,12 @@ class ExcelGenerator:
                         col = 4 + day - 1
                         for row_offset in range(1, rows_per_table - 2):
                             cell_row = current_row + row_offset
-                            cell = self.ws.cell(row=cell_row, column=col)
-                            cell.font = Font(name='游ゴシック', size=14, bold=True, color='ff0000')
-                            cell.fill = PatternFill(fill_type='solid', fgColor='ffc7ce')
+                            cell = self.ws.cells(cell_row, col)
+                            cell.api.Font.Name = '游ゴシック'
+                            cell.api.Font.Size = 14
+                            cell.api.Font.Bold = True
+                            cell.api.Font.Color = 0xFF0000
+                            cell.api.Interior.Color = 0xFFC7CE
 
                 # 次の月のテーブル開始行を更新
                 current_row += rows_per_table

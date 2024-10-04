@@ -10,7 +10,7 @@ import os
 def get_output_path(title, start_date, end_date):
     output_dir = resource_path('output')
     os.makedirs(output_dir, exist_ok=True)
-    filename = f"{title}_{start_date.strftime('%Y%m')}_{end_date.strftime('%Y%m')}.xlsx"
+    filename = f"{title}製造工程表_{start_date.strftime('%Y%m')}_{end_date.strftime('%Y%m')}.xlsx"
     full_path = os.path.join(output_dir, filename)
     return full_path
 
