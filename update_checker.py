@@ -8,7 +8,7 @@ import webbrowser
 import sys
 
 # アプリケーションの現在のバージョン
-CURRENT_VERSION = "1.2.2"
+CURRENT_VERSION = "1.3.0"
 
 # GitHubリポジトリ情報
 GITHUB_USER = "ka-tamaki"
